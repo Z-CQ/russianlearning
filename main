@@ -1,0 +1,293 @@
+#!/bin/python3.13
+# Russian learning game written by Caleb Tyson
+
+import os
+from enum import Enum
+import random
+
+# Verify OS is Linux
+if os.name == 'nt':
+    print("\033[41;30mYou must be on Linux to run this program!\033[0m")
+    exit(-1)
+
+PROMPT = "  \033[95m> \033[0m"
+
+if not os.path.exists(f"/home/{os.getlogin()}/.ruLearning/wordlist.txt"):
+    print("Word List doesn't exist.")
+    if not os.path.exists(f"/home/{os.getlogin()}/.ruLearning/"):
+        print("Russian Learning dotfile doesn't exist.")
+        os.mkdir(f"/home/{os.getlogin()}/.ruLearning/")
+        print(f"Russian Learning dotfile created at /home/{os.getlogin()}/.ruLearning/")
+    print("Creating Word List")
+    print("Press CTRL+C to finish. Ensure all spelling is correct.")
+    print(f"Word List can be modified at /home/{os.getlogin()}/.ruLearning/wordlist.txt")
+    wl = open(f"/home/{os.getlogin()}/.ruLearning/wordlist.txt", "w", encoding="utf-8")
+    try:
+        while True:
+            print("Type in a Russian word")
+            rWord = input(PROMPT).strip().lower()
+            print("Type in all known English translations, separating each with a comma (,)")
+            eWords = input(PROMPT).strip().lower()
+            wl.write(f"{rWord}...{eWords}\n")
+    except KeyboardInterrupt:
+        wl.close()
+        print("File creation finished")
+
+
+class ModeEnum(Enum):
+    WORD_REP = 0
+
+SELECTED_MODE = None
+
+# Title screen
+def title():
+    os.system("clear")
+    os.system("printf \"\033[91m\" && figlet RUSSIAN LEARNING")
+    print("\033[96mDeveloped by \033[93mCaleb Tyson\033[0m")
+    print("")
+
+
+# Select a mode/game
+def mode_selection():
+    modes = {
+        "Word Repetition": ModeEnum.WORD_REP
+    }
+
+    # Print each mode and index
+    for index, value in enumerate(modes):
+        print(f"\033[94m[\033[0m{index}\033[94m]\033[0m {value}")
+
+    print("\nSelect a mode for today's learning")
+    selection = -1
+
+    # Iterate until valid selection
+    while selection < 0 or selection >= len(modes):
+        selection = input(PROMPT)
+
+        # Is it a number?
+        if selection.isnumeric():
+
+            # Parse to integer
+            selection = int(selection)
+
+            # Check range
+            if selection < 0 or selection >= len(modes):
+                print(f"\nPlease select a number between 0 and {len(modes) - 1}")
+        else:
+            # Reset selection to -1
+            print("\nSelection must be a number")
+            selection = -1
+    
+    # Set selected mode to user selection
+    global SELECTED_MODE
+    SELECTED_MODE = ModeEnum(selection)
+
+
+# Word Repitition Game
+def word_repetition_game():
+
+    # Game rules
+    rules = {
+        "Endless": False,
+        "Rounds": 30,
+        "Show Correct Translation": True,
+        "Show Potential Answers": True
+    }
+
+    # Clear screen, print title, print rules if True
+    def clearScreen(printRules=False):
+        title()
+
+        # Print rule stuff
+        if printRules:
+            print("\033[4mGame Rules\033[0m\n")
+            for index, (key, value) in enumerate(rules.items()):
+                print(f"\033[94m[\033[0m{index}\033[94m]\033[0m {key}: {value}")
+            print("\nChange values with 'set (index) value'\nFor example, 'set 1 50' for 50 rounds.\nType 'play' once ready.\n")
+
+    # Clear the screen
+    clearScreen(True)
+
+    action = ""
+    while action == "":
+        action = input(PROMPT).lower()
+
+        # If play, play
+        if action == "play":
+            break
+
+        # Set rule code
+        if action.startswith("set"):
+
+            # Get args
+            action_args = action.split(" ")
+
+            # Check arg length
+            if len(action_args) != 3:
+                print("You need exactly 3 arguments! No more, no less.")
+                action = ""
+                continue
+
+            # Ensure target rule index is number
+            if not action_args[1].isnumeric():
+                print("Rule index MUST be a number!")
+                action = ""
+                continue
+
+            # Cast rule value to number if number
+            if action_args[2].isnumeric():
+                action_args[2] = int(action_args[2])
+
+            # Cast rule value to boolean if boolean
+            elif action_args[2] == "true" or action_args[2] == "t":
+                action_args[2] = True
+            elif action_args[2] == "false" or action_args[2] == "f":
+                action_args[2] = False
+
+            # Cast rule position to number
+            action_args[1] = int(action_args[1])
+
+            # Check rule position bounds
+            if action_args[1] < 0 or action_args[1] >= len(rules.keys()):
+                print("Rule index is out of bounds!")
+                action = ""
+                continue
+
+            # Get the target rule value type
+            targetType = type(list(rules.values())[action_args[1]])
+
+            # Ensure rule value type is the same as user value type
+            if type(action_args[2]) != targetType:
+                print("Invalid rule type.")
+                action = ""
+                continue
+
+            # Set the rule, clear args, and print new rules
+            rules[list(rules.keys())[action_args[1]]] = action_args[2]
+            clearScreen(True)
+            action_args.clear()
+        action = ""
+
+    #
+    # The actual game here
+    #
+
+    roundsPlayed = 0
+
+    # Should the game end?
+    def shouldEnd():
+        return roundsPlayed >= rules["Rounds"] and not rules["Endless"]
+
+    # Get the words and all lines
+    word_list = open(f"/home/{os.getlogin()}/.ruLearning/wordlist.txt", "r", encoding="utf-8")
+    lines = [line.strip() for line in word_list if line.strip()]
+    
+    while not shouldEnd():
+        try:
+            title()
+
+            # Print out progress if not endless
+            if not rules["Endless"]: print(f"[{roundsPlayed}/{rules["Rounds"]}]\n")
+
+            # Get the line
+            line = random.choice(lines)
+
+            # Get the Russian word
+            ruWord = line.split("...")[0]
+
+            # Get all English translations
+            engTranslations = line.split("...")[1].split(",")
+
+            # Pick a random English translation as the answer
+            translation = random.choice(engTranslations)
+
+            # Variable to store if the player is correct or incorrect
+            correct = False
+
+            # Give the user info
+            print("What does this word mean?")
+            print(ruWord)
+            print("")
+
+            # Show potential (fake) answers + the real one
+            if rules["Show Potential Answers"]:
+
+                # Empty array that will soon be printed out
+                falseTranslations = []
+
+                # Get 3 random words
+                for i in range(3):
+
+                    # Start on the used line
+                    fLine = line
+
+                    # Iterate until it is no longer the used line
+                    while fLine == line:
+                        fLine = random.choice(lines)
+
+                    # Append a random English translation in the line
+                    falseTranslations.append(random.choice(fLine.split("...")[1].split(",")))
+                
+                # Put the real answer somewhere in the list
+                falseTranslations.insert(random.randrange(0, 3), translation)
+
+                # Print out each potential answer
+                for i, translations in enumerate(falseTranslations):
+                    print(f"[{chr(i + 65)}] {translations}")
+                
+                # Line break
+                print("")
+
+                # Get user answer
+                ans = input(PROMPT).lower().strip()
+
+                # Are they correct?
+                if len(ans) == 1:
+                    correct = falseTranslations[ord(ans.upper()) - 65] == translation
+                else:
+                    correct = ans in engTranslations
+                    
+            else:
+
+                # Get user answer
+                ans = input(PROMPT).lower().strip()
+
+                # Are they correct?
+                correct = ans in engTranslations
+            
+
+            if correct:
+                print("Correct!")
+            elif rules["Show Correct Translation"]:
+                print(f"Incorrect! \033[96m{ruWord}\033[0m means \033[96m{translation}\033[0m!")
+
+            roundsPlayed += 1
+            print("")
+            input("Press ENTER to proceed.")
+
+        except KeyboardInterrupt:
+            print("")
+            break
+    
+    print("Game concluded.")
+    input("Press ENTER to return to the game menu.")
+
+
+def main():
+    while True:
+        title()
+        mode_selection()
+        
+        try:
+            if SELECTED_MODE == ModeEnum.WORD_REP:
+                word_repetition_game()
+        except KeyboardInterrupt:
+            title()
+            pass
+
+
+try:
+    main()
+except KeyboardInterrupt:
+    print()
+    exit(0)
