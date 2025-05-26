@@ -101,9 +101,16 @@ def mode_selection():
             if selection < 0 or selection >= len(modes):
                 print(f"\nPlease select a number between 0 and {len(modes) - 1}")
         else:
-            # Reset selection to -1
-            print("\nSelection must be a number")
-            selection = -1
+            if selection != "quit" and selection != "exit" and selection != "clear":
+                # Reset selection to -1
+                print("\nSelection must be a number")
+                selection = -1
+            elif selection == "clear":
+                title()
+                mode_selection()
+                return
+            else:
+                exit(0)
     
     # Set selected mode to user selection
     global SELECTED_MODE
@@ -144,6 +151,9 @@ def spelling_game():
         # If play, play
         if action == "play":
             break
+
+        if action == "quit" or action == "back" or action == "exit":
+            return
 
         # Set rule code
         if action.startswith("set"):
@@ -303,6 +313,9 @@ def word_repetition_game():
         # If play, play
         if action == "play":
             break
+
+        if action == "quit" or action == "back" or action == "exit":
+            return
 
         # Set rule code
         if action.startswith("set"):
