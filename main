@@ -289,7 +289,8 @@ def word_repetition_game():
         "Endless": False,
         "Rounds": 30,
         "Show Correct Translation": True,
-        "Show Potential Answers": True
+        "Show Potential Answers": True,
+        "Only Pass Round If Correct": True
     }
 
     # Clear screen, print title, print rules if True
@@ -462,7 +463,10 @@ def word_repetition_game():
             elif rules["Show Correct Translation"]:
                 print(f"Incorrect! \033[96m{ruWord}\033[0m means \033[96m{translation}\033[0m!")
 
-            roundsPlayed += 1
+            if rules["Only Pass Round If Correct"]:
+                roundsPlayed += 1 if correct else 0
+            else:
+                roundsPlayed += 1
             print("")
             input("Press ENTER to proceed.")
 
